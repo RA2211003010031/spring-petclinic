@@ -14,8 +14,10 @@ pipeline {
         }
         stage('Start Databases') {
             steps {
-                sh 'docker-compose down -v || true'
-                sh 'docker-compose up -d'
+                // Ensure old containers are removed
+                sh 'docker compose down -v || true'
+                // Start databases in detached mode
+                sh 'docker compose up -d'
                 sh 'sleep 20'
             }
         }
@@ -37,22 +39,23 @@ pipeline {
             }
         }
         stage('Deploy to Kubernetes') {
-    steps {
-        withKubeConfig([credentialsId: 'kubeconfig-creds']) {
-            sh '''
-                sed -i "s|image: adarsh05122002/spring-petclinic:latest|image: $DOCKER_IMAGE|g" Deployment.yaml
-                kubectl apply -f Deployment.yaml
-                kubectl apply -f service.yaml
-                kubectl rollout status deployment/sample-app-deployment
-                kubectl get pods,services
-            '''
+            steps {
+                withKubeConfig([credentialsId: 'kubeconfig-creds']) {
+                    sh """
+                        # Replace the image in deployment.yaml with BUILD_NUMBER tag
+                        sed -i 's|image: adarsh05122002/spring-petclinic:.*|image: $DOCKER_IMAGE|g' Deployment.yaml
+                        kubectl apply -f Deployment.yaml
+                        kubectl apply -f service.yaml
+                        kubectl rollout status deployment/sample-app-deployment
+                    """
+                }
+            }
         }
     }
-}
-    }
-}
     post {
         always {
+            // Stop local docker containers
             sh 'docker compose down -v || true'
         }
     }
+}
