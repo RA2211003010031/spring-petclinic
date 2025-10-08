@@ -44,6 +44,7 @@ pipeline {
                 kubectl apply -f Deployment.yaml
                 kubectl apply -f service.yaml
                 kubectl rollout status deployment/sample-app-deployment
+                kubectl get pods,services
             '''
         }
     }
