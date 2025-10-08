@@ -14,9 +14,7 @@ pipeline {
         }
         stage('Start Databases') {
             steps {
-                // Ensure old containers are removed
                 sh 'docker compose down -v || true'
-                // Start databases in detached mode
                 sh 'docker compose up -d'
                 sh 'sleep 20'
             }
@@ -39,41 +37,40 @@ pipeline {
             }
         }
         stage('Deploy to Kubernetes') {
-    environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-        AWS_DEFAULT_REGION = 'ap-south-1'
-    }
-    steps {
-        withKubeConfig([credentialsId: 'kubeconfig-creds']) {
-            sh '''
-                # Check if files exist
-                ls -la Deployment.yaml service.yaml
-                
-                # Replace the image tag
-                sed -i "s|image: adarsh05122002/spring-petclinic:.*|image: $DOCKER_IMAGE|g" Deployment.yaml
-                
-                # Show the updated file content
-                echo "=== Updated Deployment.yaml ==="
-                cat Deployment.yaml
-                
-                # Apply the manifests
-                kubectl apply -f Deployment.yaml
-                kubectl apply -f service.yaml
-                
-                # Wait for rollout
-                kubectl rollout status deployment/sample-app-deployment
-                
-                # Show deployment status
-                kubectl get pods,services
-            '''
+            environment {
+                AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+                AWS_DEFAULT_REGION = 'ap-south-1'
+            }
+            steps {
+                withKubeConfig([credentialsId: 'kubeconfig-creds']) {
+                    sh '''
+                        # Check if files exist
+                        ls -la Deployment.yaml service.yaml
+                        
+                        # Replace the image tag
+                        sed -i "s|image: adarsh05122002/spring-petclinic:.*|image: $DOCKER_IMAGE|g" Deployment.yaml
+                        
+                        # Show the updated file content
+                        echo "=== Updated Deployment.yaml ==="
+                        cat Deployment.yaml
+                        
+                        # Apply the manifests
+                        kubectl apply -f Deployment.yaml
+                        kubectl apply -f service.yaml
+                        
+                        # Wait for rollout
+                        kubectl rollout status deployment/sample-app-deployment
+                        
+                        # Show deployment status
+                        kubectl get pods,services
+                    '''
+                }
+            }
         }
-    }
-}
     }
     post {
         always {
-            // Stop local docker containers
             sh 'docker compose down -v || true'
         }
     }
