@@ -40,11 +40,28 @@ pipeline {
             environment {
                 AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-                AWS_DEFAULT_REGION = 'ap-south-1' // set your region
+                AWS_DEFAULT_REGION = 'ap-south-1'
             }
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig-creds']) {
-                    sh 'kubectl set image deployment/sample-app-deployment sample-container=$DOCKER_IMAGE'
+                    // Create deployment if it doesn't exist, otherwise update the image
+                    sh '''
+                        # Check if deployment exists
+                        if kubectl get deployment sample-app-deployment; then
+                            echo "Deployment exists, updating image..."
+                            kubectl set image deployment/sample-app-deployment sample-container=$DOCKER_IMAGE
+                        else
+                            echo "Deployment doesn't exist, creating resources..."
+                            kubectl apply -f Deployment.yaml
+                            kubectl apply -f service.yaml
+                        fi
+                        
+                        # Wait for rollout to complete
+                        kubectl rollout status deployment/sample-app-deployment
+                        
+                        # Get service info
+                        kubectl get services sample-app-service
+                    '''
                 }
             }
         }
