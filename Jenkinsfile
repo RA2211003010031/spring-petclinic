@@ -37,34 +37,29 @@ pipeline {
             }
         }
         stage('Deploy to Kubernetes') {
-            environment {
-                AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-                AWS_DEFAULT_REGION = 'ap-south-1'
-            }
-            steps {
-                withKubeConfig([credentialsId: 'kubeconfig-creds']) {
-                    // Create deployment if it doesn't exist, otherwise update the image
-                    sh '''
-                        # Check if deployment exists
-                        if kubectl get deployment sample-app-deployment; then
-                            echo "Deployment exists, updating image..."
-                            kubectl set image deployment/sample-app-deployment sample-container=$DOCKER_IMAGE
-                        else
-                            echo "Deployment doesn't exist, creating resources..."
-                            kubectl apply -f Deployment.yaml
-                            kubectl apply -f service.yaml
-                        fi
-                        
-                        # Wait for rollout to complete
-                        kubectl rollout status deployment/sample-app-deployment
-                        
-                        # Get service info
-                        kubectl get services sample-app-service
-                    '''
-                }
-            }
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION = 'ap-south-1'
+    }
+    steps {
+        withKubeConfig([credentialsId: 'kubeconfig-creds']) {
+            sh '''
+                # Update image in the manifest
+                sed -i "s|image: adarsh05122002/spring-petclinic:latest|image: $DOCKER_IMAGE|g" k8s-manifests.yaml
+                
+                # Apply the manifests
+                kubectl apply -f k8s-manifests.yaml
+                
+                # Wait for rollout
+                kubectl rollout status deployment/sample-app-deployment
+                
+                # Show deployment status
+                kubectl get pods,services
+            '''
         }
+    }
+}
     }
     post {
         always {
