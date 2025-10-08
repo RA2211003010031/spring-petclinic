@@ -17,12 +17,18 @@ pipeline {
         }
 
         stage('Start Databases') {
-            steps {
-                sh 'docker compose down -v || true'
-                sh 'docker compose up -d'
-                sh 'sleep 20'
-            }
-        }
+    steps {
+        sh 'docker-compose down -v || true'
+        sh 'docker-compose up -d'
+        sh 'sleep 20'
+    }
+}
+
+post {
+    always {
+        sh 'docker-compose down -v || true'
+    }
+}
 
         stage('Build with Maven') {
             steps {
